@@ -5,6 +5,7 @@ import cors from "cors";
 import fileUpload from "express-fileupload";
 // import { upload } from "./middlewares/multer.js";
 import * as tf from "@tensorflow/tfjs-node";
+import { readFile } from "fs/promises";
 // import predictionModel from "./utility/location.keras";
 
 // load model
@@ -23,7 +24,13 @@ const labels = [
 const app = express();
 
 app.use(cors());
-app.use(fileUpload());
+// app.use(fileUpload());
+app.use(
+  fileUpload({
+    useTempFiles: true,
+    tempFileDir: "/tmp/",
+  })
+);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -40,14 +47,14 @@ app.get("/", (req, res) => {
 
 app.post("/upload", async (req, res) => {
   // console.log(req.files.image);
-  let image = tf.node.decodeImage(req.files.image.data);
-  // let image = tf.node.decodeImage(req.body);
+  const imageBuffer = await readFile(req.files.image.tempFilePath);
+  // console.log(imageBuffer);
+  let image = tf.node.decodeImage(imageBuffer);
+
   image = tf.image.resizeNearestNeighbor(image, [128, 128]).expandDims();
-  // const image = req.body.image;
-  // tf.resize
-  // console.log(image.dataSync());
+
   const predictions = await model.predict(image).data();
-  console.log(predictions);
+  // console.log(predictions);
   const result = labels[predictions.indexOf(Math.max(...predictions))];
   console.log(result);
   // console.log(req.files.image);
